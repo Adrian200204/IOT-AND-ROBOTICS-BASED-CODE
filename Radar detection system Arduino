@@ -1,0 +1,83 @@
+#include <Servo.h>
+
+Servo myServo;
+
+int trigPin = 10;
+int echoPin = 11;
+int buzzer = 8;
+
+long duration;
+int distance;
+
+void setup() {
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzer, OUTPUT);
+
+  Serial.begin(9600);
+
+  myServo.attach(12);
+}
+
+void loop() {
+
+  // Gerak dari 15° ke 165°
+  for(int angle = 15; angle <= 165; angle++) {
+
+    myServo.write(angle);
+    delay(30);
+
+    distance = calculateDistance();
+
+    // Kirim data ke Processing
+    Serial.print(angle);
+    Serial.print(",");
+    Serial.print(distance);
+    Serial.print(".");
+
+    // Buzzer jika objek dekat
+    if(distance < 20) {
+      digitalWrite(buzzer, HIGH);
+    } else {
+      digitalWrite(buzzer, LOW);
+    }
+  }
+
+  // Gerak balik
+  for(int angle = 165; angle >= 15; angle--) {
+
+    myServo.write(angle);
+    delay(30);
+
+    distance = calculateDistance();
+
+    Serial.print(angle);
+    Serial.print(",");
+    Serial.print(distance);
+    Serial.print(".");
+
+    if(distance < 20) {
+      digitalWrite(buzzer, HIGH);
+    } else {
+      digitalWrite(buzzer, LOW);
+    }
+  }
+}
+
+// Fungsi hitung jarak
+int calculateDistance() {
+
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+
+  digitalWrite(trigPin, LOW);
+
+  duration = pulseIn(echoPin, HIGH);
+
+  distance = duration * 0.034 / 2;
+
+  return distance;
+}
