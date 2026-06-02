@@ -1,0 +1,100 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Inisialisasi LCD I2C (Alamat 0x27, 16 kolom, 2 baris)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Pin Joystick
+const int pinY = A0;
+
+// Variabel Posisi
+int posisiPemain = 0;   // 0 = Baris Atas, 1 = Baris Bawah
+int kolomRintangan = 15; // Rintangan mulai dari kanan (kolom 15)
+int barisRintangan = 0;  // Baris rintangan (0 atau 1)
+
+int skor = 0;
+unsigned long waktuLalu = 0;
+int kecepatan = 300;    // Semakin kecil, game semakin cepat (ms)
+bool gameOver = false;
+
+void setup() {
+  pinMode(pinY, INPUT);
+  
+  lcd.init();
+  lcd.backlight();
+  
+  // Tampilan awal
+  lcd.print("  Game Joystick");
+  lcd.setCursor(0, 1);
+  lcd.print("  Mulai Main!  ");
+  delay(2000);
+  lcd.clear();
+  
+  // Mengacak posisi rintangan pertama
+  randomSeed(analogRead(A1)); 
+  barisRintangan = random(0, 2);
+}
+
+void loop() {
+  if (!gameOver) {
+    // 1. Baca input Joystick (VRY)
+    int nilaiY = analogRead(pinY);
+    
+    // Jika joystick digerakkan ke atas/bawah
+    if (nilaiY < 300) {
+      posisiPemain = 0; // Pindah ke baris atas
+    } else if (nilaiY > 700) {
+      posisiPemain = 1; // Pindah ke baris bawah
+    }
+
+    // 2. Gerakkan rintangan berdasarkan waktu (tanpa delay agar joystick responsif)
+    unsigned long waktuSekarang = millis();
+    if (waktuSekarang - waktuLalu >= kecepatan) {
+      waktuLalu = waktuSekarang;
+      
+      lcd.clear(); // Bersihkan layar setiap frame
+      
+      // Jalankan rintangan ke kiri
+      kolomRintangan--;
+      
+      // Jika rintangan lewat/lolos dari pemain
+      if (kolomRintangan < 0) {
+        kolomRintangan = 15;          // Reset ke kanan lagi
+        barisRintangan = random(0, 2); // Acak baris baru (atas/bawah)
+        skor++;                       // Tambah skor
+        
+        // Buat game semakin menantang setiap skor bertambah
+        if (kecepatan > 100) kecepatan -= 15; 
+      }
+      
+      // 3. Cek Tabrakan (Game Over)
+      if (kolomRintangan == 0 && posisiPemain == barisRintangan) {
+        gameOver = true;
+      }
+      
+      // 4. Gambar Karakter Pemain dan Rintangan di LCD
+      if (!gameOver) {
+        // Gambar Pemain (Simbol '>')
+        lcd.setCursor(0, posisiPemain);
+        lcd.print(">");
+        
+        // Gambar Rintangan (Simbol '#')
+        lcd.setCursor(kolomRintangan, barisRintangan);
+        lcd.print("#");
+      }
+    }
+  } else {
+    // Tampilan jika Kalah
+    lcd.clear();
+    lcd.setCursor(3, 0);
+    lcd.print("GAME OVER!");
+    lcd.setCursor(3, 1);
+    lcd.print("Skor Kamu: ");
+    lcd.print(skor);
+    
+    // Berhenti total. Untuk main lagi, tekan tombol RESET di Arduino.
+    while (true) {
+      // Diam di sini
+    }
+  }
+}
