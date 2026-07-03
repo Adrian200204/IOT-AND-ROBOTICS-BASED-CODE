@@ -1,0 +1,119 @@
+#include <Keypad.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <Servo.h>
+
+// 1. Inisialisasi LCD & Servo
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+Servo kunciServo;
+
+// 2. Pengaturan Keypad
+const byte BARIS = 4;
+const byte KOLOM = 4;
+char tombols[BARIS][KOLOM] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+byte pinBaris[BARIS] = {9, 8, 7, 6};
+byte pinKolom[KOLOM] = {5, 4, 3, 2};
+
+Keypad keypadBrankas = Keypad(makeKeymap(tombols), pinBaris, pinKolom, BARIS, KOLOM);
+
+// 3. Variabel Password & Status
+String pinRahasia = "1234"; // Silakan ganti PIN brankasmu di sini
+String inputPIN = "";
+bool brankasTerbuka = false;
+
+void setup() {
+  kunciServo.attach(10); // Servo di Pin 10
+  
+  lcd.init();
+  lcd.backlight();
+  
+  kunciBrankas(); // Mulai dengan posisi brankas terkunci
+}
+
+void loop() {
+  char tombol = keypadBrankas.getKey();
+
+  if (tombol) {
+    // JIKA BRANKAS SEDANG TERKUNCI
+    if (!brankasTerbuka) {
+      if (tombol == '#') {
+        // Tombol # untuk hapus/reset ketikan yang salah
+        inputPIN = "";
+        tampilanTerkunci();
+      } 
+      else if (tombol == '*') {
+        // Tombol * tidak dipakai saat mengetik PIN
+      } 
+      else {
+        // Simpan input angka
+        inputPIN += tombol;
+        lcd.setCursor(inputPIN.length() - 1, 1);
+        lcd.print('*'); // Tampilkan bintang di layar
+        
+        // Jika sudah mengetik 4 digit
+        if (inputPIN.length() == 4) {
+          delay(500);
+          if (inputPIN == pinRahasia) {
+            bukaBrankas();
+          } else {
+            lcd.clear();
+            lcd.print("PIN SALAH!");
+            lcd.setCursor(0, 1);
+            lcd.print("Akses Ditolak");
+            delay(2000);
+            inputPIN = "";
+            tampilanTerkunci();
+          }
+        }
+      }
+    } 
+    // JIKA BRANKAS SEDANG TERBUKA
+    else {
+      // Tekan tombol apa saja untuk mengunci kembali brankas
+      kunciBrankas();
+    }
+  }
+}
+
+// Fungsi untuk membuka brankas
+void bukaBrankas() {
+  brankasTerbuka = true;
+  lcd.clear();
+  lcd.print("PIN BENAR!");
+  lcd.setCursor(0, 1);
+  lcd.print("Brankas Terbuka");
+  
+  kunciServo.write(90); // Servo berputar ke 90 derajat (posisi tidak mengunci)
+  delay(1000);
+  
+  lcd.clear();
+  lcd.print("Tekan sembarang");
+  lcd.setCursor(0, 1);
+  lcd.print("tombol u/ kunci");
+  inputPIN = ""; // Reset input
+}
+
+// Fungsi untuk mengunci brankas
+void kunciBrankas() {
+  brankasTerbuka = false;
+  lcd.clear();
+  lcd.print("Mengunci...");
+  
+  kunciServo.write(0); // Servo kembali ke 0 derajat (posisi mengunci slot)
+  delay(1500);
+  
+  tampilanTerkunci();
+}
+
+// Fungsi menampilkan layar utama saat terkunci
+void tampilanTerkunci() {
+  lcd.clear();
+  lcd.print("Brankas Terkunci");
+  lcd.setCursor(0, 1);
+  lcd.print("Masukkan PIN: ");
+}
